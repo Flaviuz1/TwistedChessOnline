@@ -15,66 +15,7 @@
             margin: 0;
             padding: 0;
         }
-        @media (max-width: 900px) {
-          body {
-            align-items: flex-start;
-            overflow-y: auto;
-          }
-        
-          #app {
-            flex-direction: column;
-            width: 100vw;
-            height: auto;
-          }
-        
-          #board-wrap {
-            width: 100vw;
-            height: 100vw;
-          }
-        
-          #canvas {
-            width: 100vw;
-            height: 100vw;
-          }
-        
-          #panel {
-            width: 100%;
-            height: auto;
-            border-left: none;
-            border-top: 1px solid #2a2215;
-            flex-direction: row;
-            flex-wrap: wrap;
-            padding: 16px;
-            gap: 12px;
-          }
-        
-          .panel-title { width: 100%; margin-bottom: 0; }
-          .panel-subtitle { width: 100%; margin-bottom: 0; }
-        
-          #arrow-wrap {
-            flex-direction: row;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 0;
-            width: auto;
-          }
-        
-          .divider { width: 100%; margin: 4px 0; }
-        
-          .section-label { margin-bottom: 4px; }
-        
-          .your-code { margin-bottom: 6px; }
-        
-          #btn-create, #btn-join, #btn-again { width: auto; padding: 9px 18px; }
-        
-          #status-msg { width: 100%; text-align: left; margin: 4px 0; }
-        
-          #game-status { width: 100%; text-align: left; margin-top: 4px; }
-        
-          #game-over-section { width: 100%; text-align: left; }
-        
-          .spacer { display: none; }
-        }
+
         body {
             background: #0a0a0a;
             color: #d4c5a0;
@@ -277,6 +218,92 @@
         .spacer {
             flex: 1;
         }
+
+        /* ── MOBILE ─────────────────────────────────────────────────────────── */
+        @media (max-width: 900px) {
+            body {
+                align-items: flex-start;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            #app {
+                flex-direction: column;
+                width: 100vw;
+                height: auto;
+                box-shadow: none;
+            }
+
+            #board-wrap {
+                width: 100vw;
+                height: 100vw;
+                flex-shrink: 0;
+            }
+
+            #canvas {
+                width: 100vw !important;
+                height: 100vw !important;
+            }
+
+            #panel {
+                width: 100%;
+                height: auto;
+                overflow: visible;
+                border-left: none;
+                border-top: 1px solid #2a2215;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-template-areas:
+                    "title    title"
+                    "subtitle subtitle"
+                    "arrow    arrow"
+                    "divA     divA"
+                    "clabel   jlabel"
+                    "code     jinput"
+                    "cbtn     jbtn"
+                    "divB     divB"
+                    "status   status"
+                    "gstatus  gstatus"
+                    "gover    gover";
+                padding: 16px;
+                gap: 8px 16px;
+            }
+
+            .panel-title    { grid-area: title;    margin-bottom: 0; }
+            .panel-subtitle { grid-area: subtitle; margin-bottom: 0; }
+
+            #arrow-wrap {
+                grid-area: arrow;
+                flex-direction: row;
+                justify-content: center;
+                gap: 16px;
+                margin-bottom: 0;
+            }
+            .arrow-label { margin-top: 0; }
+
+            /* first divider */
+            .divider:nth-of-type(1) { grid-area: divA; margin: 0; }
+            /* second divider */
+            .divider:nth-of-type(2) { grid-area: divB; margin: 0; }
+            /* third divider (after join section) — hide on mobile */
+            .divider:nth-of-type(3) { display: none; }
+
+            /* Create room column (left) */
+            #create-label { grid-area: clabel; }
+            .your-code    { grid-area: code;   font-size: 20px; margin-bottom: 0; }
+            #btn-create   { grid-area: cbtn; }
+
+            /* Join room column (right) */
+            #join-label   { grid-area: jlabel; }
+            #code-input   { grid-area: jinput; font-size: 14px; margin-bottom: 0; }
+            #btn-join     { grid-area: jbtn; }
+
+            #status-msg        { grid-area: status;  text-align: center; margin: 0; }
+            #game-status       { grid-area: gstatus; text-align: center; margin-top: 0; }
+            #game-over-section { grid-area: gover;   text-align: center; }
+
+            .spacer { display: none; }
+        }
     </style>
 </head>
 
@@ -296,13 +323,13 @@
 
             <hr class="divider">
 
-            <div class="section-label">Your Room Code</div>
+            <div class="section-label" id="create-label">Your Room Code</div>
             <div class="your-code" id="your-code">----</div>
             <button class="btn" id="btn-create">Create Room</button>
 
             <hr class="divider">
 
-            <div class="section-label">Join With Code</div>
+            <div class="section-label" id="join-label">Join With Code</div>
             <input class="code-input" id="code-input" maxlength="4" placeholder="Enter code" spellcheck="false">
             <button class="btn" id="btn-join" disabled>Join Room</button>
 
@@ -325,7 +352,6 @@
     </div>
 
     <script>
-        // ── CONSTANTS ────────────────────────────────────────────────────────────────
         const SERVER_URL = 'wss://twistedchess.onrender.com/ws';
 
         const CASTLE_VECTORS = {
@@ -344,35 +370,26 @@
             Kw: 'KingWhite', Kb: 'KingBlack',
         };
 
-        // Preload all sprites
         const SPRITES = {};
-        let spritesLoaded = 0;
-        const SPRITE_COUNT = Object.keys(SPRITE_FILES).length;
-
         for (const [key, file] of Object.entries(SPRITE_FILES)) {
             const img = new Image();
-            img.onload = () => { spritesLoaded++; };
-            img.onerror = () => { spritesLoaded++; console.warn(`Could not load ${file}.png`); };
+            img.onerror = () => console.warn(`Could not load ${file}.png`);
             img.src = `Assets/${file}.png`;
             SPRITES[key] = img;
         }
 
-        // Board drawing constants
         const MARGIN = 40;
         const CELL = 90;
         const LIGHT = '#e8d5b7';
         const DARK = '#9b6b3e';
         const BORDER = '#5a3820';
-
         const MOVE_ANIM_MS = 260;
         const ROT_ANIM_MS = 240;
 
         // ── CHESS LOGIC ──────────────────────────────────────────────────────────────
         class ChessPiece {
             constructor(type, color, number = null) {
-                this.type = type;
-                this.color = color;
-                this.number = number;
+                this.type = type; this.color = color; this.number = number;
                 this.hasMoved = false;
                 this.canCastleKingside = type === 'K';
                 this.canCastleQueenside = type === 'K';
@@ -412,7 +429,7 @@
                     const [nr, nc] = [r - dr, c + dc];
                     if (onBoard(nr, nc)) { const p = this.grid[nr][nc]; if (p && p.type === 'P' && p.color === byColor) return true; }
                 }
-                for (const [mr, mc] of [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]) {
+                for (const [mr, mc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
                     const [nr, nc] = [r + mr, c + mc];
                     if (onBoard(nr, nc)) { const p = this.grid[nr][nc]; if (p && p.type === 'N' && p.color === byColor) return true; }
                 }
@@ -421,11 +438,11 @@
                     const [nr, nc] = [r + dr2, c + dc2];
                     if (onBoard(nr, nc)) { const p = this.grid[nr][nc]; if (p && p.type === 'K' && p.color === byColor) return true; }
                 }
-                for (const [dr2, dc2] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                for (const [dr2, dc2] of [[-1,0],[1,0],[0,-1],[0,1]]) {
                     let [nr, nc] = [r + dr2, c + dc2];
                     while (onBoard(nr, nc)) { const p = this.grid[nr][nc]; if (p) { if (p.color === byColor && 'RQ'.includes(p.type)) return true; break; } nr += dr2; nc += dc2; }
                 }
-                for (const [dr2, dc2] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+                for (const [dr2, dc2] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
                     let [nr, nc] = [r + dr2, c + dc2];
                     while (onBoard(nr, nc)) { const p = this.grid[nr][nc]; if (p) { if (p.color === byColor && 'BQ'.includes(p.type)) return true; break; } nr += dr2; nc += dc2; }
                 }
@@ -456,34 +473,30 @@
                         if (onBoard(nr2, nc2) && this.grid[nr2][nc2] && this.grid[nr2][nc2].color !== color) moves.push([nr2, nc2]);
                     }
                 }
-
                 if (piece.type === 'N') {
-                    for (const [mr, mc] of [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]) {
+                    for (const [mr, mc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
                         const [nr, nc] = [r + mr, c + mc];
                         if (onBoard(nr, nc)) { const p = this.grid[nr][nc]; if (!p || p.color !== color) moves.push([nr, nc]); }
                     }
                 }
-
                 if ('RQ'.includes(piece.type)) {
-                    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
                         let [nr, nc] = [r + dr, c + dc];
                         while (onBoard(nr, nc)) { const p = this.grid[nr][nc]; if (!p) moves.push([nr, nc]); else { if (p.color !== color) moves.push([nr, nc]); break; } nr += dr; nc += dc; }
                     }
                 }
                 if ('BQ'.includes(piece.type)) {
-                    for (const [dr, dc] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+                    for (const [dr, dc] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
                         let [nr, nc] = [r + dr, c + dc];
                         while (onBoard(nr, nc)) { const p = this.grid[nr][nc]; if (!p) moves.push([nr, nc]); else { if (p.color !== color) moves.push([nr, nc]); break; } nr += dr; nc += dc; }
                     }
                 }
-
                 if (piece.type === 'K') {
                     for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
                         if (!dr && !dc) continue;
                         const [nr, nc] = [r + dr, c + dc];
                         if (onBoard(nr, nc)) { const p = this.grid[nr][nc]; if (!p || p.color !== color) moves.push([nr, nc]); }
                     }
-                    // Castling
                     const opp = color === 'w' ? 'b' : 'w';
                     const vecs = CASTLE_VECTORS[this.rotation];
                     const kpos = this.castling[color].king;
@@ -557,7 +570,6 @@
                 const piece = this.grid[fr][fc];
                 if (!piece) return;
                 const color = piece.color;
-                // Move rook for castling
                 if (piece.type === 'K' && (Math.abs(tr - fr) === 2 || Math.abs(tc - fc) === 2)) {
                     const dr = tr !== fr ? Math.sign(tr - fr) : 0, dc = tc !== fc ? Math.sign(tc - fc) : 0;
                     const vecs = CASTLE_VECTORS[this.rotation];
@@ -630,29 +642,18 @@
 
         const roomCode = Array.from({ length: 4 }, () => String.fromCharCode(65 + Math.random() * 26 | 0)).join('');
 
-        // Animations
-        let moveAnim = null;   // {pieceKey,fromVr,fromVc,toVr,toVc,pieceBr,pieceBc,toBr,toBc,startMs}
-        let rotAnim = null;   // {startMs, progress}
+        let moveAnim = null;
+        let rotAnim = null;
 
-        // ── CANVAS SETUP ─────────────────────────────────────────────────────────────
+        // ── CANVAS ───────────────────────────────────────────────────────────────────
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const arrowCanvas = document.getElementById('arrow-canvas');
         const arrowCtx = arrowCanvas.getContext('2d');
 
-        // ── DRAWING ───────────────────────────────────────────────────────────────────
-        function cellXY(vr, vc) {
-            return [MARGIN + vc * CELL, MARGIN + vr * CELL];
-        }
-
-        function cellCenter(vr, vc) {
-            const [x, y] = cellXY(vr, vc);
-            return [x + CELL / 2, y + CELL / 2];
-        }
-
-        function boardToVisual(br, bc) {
-            return myColor === 'w' ? [br, bc] : [7 - br, 7 - bc];
-        }
+        function cellXY(vr, vc) { return [MARGIN + vc * CELL, MARGIN + vr * CELL]; }
+        function cellCenter(vr, vc) { const [x, y] = cellXY(vr, vc); return [x + CELL / 2, y + CELL / 2]; }
+        function boardToVisual(br, bc) { return myColor === 'w' ? [br, bc] : [7 - br, 7 - bc]; }
 
         function drawBoard(rotAngle) {
             ctx.save();
@@ -662,33 +663,27 @@
                 ctx.translate(-400, -400);
             }
 
-            // Border
             ctx.fillStyle = BORDER;
             ctx.fillRect(MARGIN - 8, MARGIN - 8, CELL * 8 + 16, CELL * 8 + 16);
 
-            // Squares
             for (let vr = 0; vr < 8; vr++) for (let vc = 0; vc < 8; vc++) {
                 const [x, y] = cellXY(vr, vc);
-                const isLight = (vr + vc) % 2 === 0;
-                ctx.fillStyle = isLight ? LIGHT : DARK;
+                ctx.fillStyle = (vr + vc) % 2 === 0 ? LIGHT : DARK;
                 ctx.fillRect(x, y, CELL, CELL);
 
                 const [br, bc] = myColor === 'w' ? [vr, vc] : [7 - vr, 7 - vc];
 
-                // Last move highlight
                 if (lastMove && ([lastMove[0], lastMove[1]].join() === `${br},${bc}` || [lastMove[2], lastMove[3]].join() === `${br},${bc}`)) {
                     ctx.fillStyle = 'rgba(255,160,0,0.35)';
                     ctx.fillRect(x, y, CELL, CELL);
                 }
-                // Selection highlight
                 if (selected && selected[0] === br && selected[1] === bc) {
                     ctx.fillStyle = 'rgba(255,220,50,0.5)';
                     ctx.fillRect(x, y, CELL, CELL);
                 }
-                // Legal move dots
                 if (legalMoves.some(([lr, lc]) => lr === br && lc === bc)) {
-                    const piece = board.get(br, bc);
-                    if (piece && piece.color !== myColor) {
+                    const p = board.get(br, bc);
+                    if (p && p.color !== myColor) {
                         ctx.strokeStyle = 'rgba(220,60,60,0.7)';
                         ctx.lineWidth = 3;
                         ctx.strokeRect(x + 2, y + 2, CELL - 4, CELL - 4);
@@ -700,29 +695,23 @@
                     }
                 }
 
-                // Draw piece (skip animated piece)
-            const piece = board.get(br, bc);
-            const skipPiece = moveAnim && (
-              (moveAnim.pieceBr===br && moveAnim.pieceBc===bc) ||
-              (moveAnim.toBr===br && moveAnim.toBc===bc)
-            );
-            if (piece && !skipPiece) {
-                const [cx2, cy2] = cellCenter(vr, vc);
-                if (rotAnim) {
-                    // counter-rotate the sprite to keep it upright while board spins
-                    const boardAngleRad = rotAnim.progress * 90 * Math.PI / 180;
-                    ctx.save();
-                    ctx.translate(cx2, cy2);
-                    ctx.rotate(-boardAngleRad); // cancel out the board rotation
-                    drawPiece(ctx, piece.type + piece.color, 0, 0, CELL * 0.72);
-                    ctx.restore();
-                } else {
-                    drawPiece(ctx, piece.type + piece.color, cx2, cy2, CELL * 0.72);
+                const piece = board.get(br, bc);
+                const skipPiece = moveAnim && ((moveAnim.pieceBr === br && moveAnim.pieceBc === bc) || (moveAnim.toBr === br && moveAnim.toBc === bc));
+                if (piece && !skipPiece) {
+                    const [cx2, cy2] = cellCenter(vr, vc);
+                    if (rotAnim) {
+                        const boardAngleRad = rotAnim.progress * 90 * Math.PI / 180;
+                        ctx.save();
+                        ctx.translate(cx2, cy2);
+                        ctx.rotate(-boardAngleRad);
+                        drawPiece(ctx, piece.type + piece.color, 0, 0, CELL * 0.72);
+                        ctx.restore();
+                    } else {
+                        drawPiece(ctx, piece.type + piece.color, cx2, cy2, CELL * 0.72);
+                    }
                 }
             }
-            }
 
-            // Rank/file labels
             ctx.font = '11px Share Tech Mono';
             ctx.fillStyle = 'rgba(180,160,120,0.5)';
             ctx.textBaseline = 'middle';
@@ -734,19 +723,15 @@
                 ctx.fillText(ranks[i], MARGIN - 16, MARGIN + i * CELL + CELL / 2);
             }
 
-            // Animated piece
             if (moveAnim) {
-                const now = performance.now();
-                const t = Math.min((now - moveAnim.startMs) / MOVE_ANIM_MS, 1);
+                const t = Math.min((performance.now() - moveAnim.startMs) / MOVE_ANIM_MS, 1);
                 if (t >= 1) { moveAnim = null; }
                 else {
                     const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
                     const [x1, y1] = cellCenter(moveAnim.fromVr, moveAnim.fromVc);
                     const [x2, y2] = cellCenter(moveAnim.toVr, moveAnim.toVc);
-                    const x = x1 + (x2 - x1) * ease;
-                    const y = y1 + (y2 - y1) * ease;
                     const scale = t < 0.5 ? 1 + 0.35 * (t * 2) : 1.35 - 0.35 * ((t - 0.5) * 2);
-                    drawPiece(ctx, moveAnim.pieceKey, x, y, CELL * 0.72 * scale);
+                    drawPiece(ctx, moveAnim.pieceKey, x1 + (x2 - x1) * ease, y1 + (y2 - y1) * ease, CELL * 0.72 * scale);
                 }
             }
 
@@ -762,65 +747,54 @@
                 context.shadowOffsetX = 1;
                 context.shadowOffsetY = 2;
                 const w = key.startsWith('P') ? size * 0.80 : size;
-                context.drawImage(img, cx - w/2, cy - size/2, w, size);
+                context.drawImage(img, cx - w / 2, cy - size / 2, w, size);
                 context.restore();
             } else {
-                const glyphs = {Kw:'♔',Qw:'♕',Rw:'♖',Bw:'♗',Nw:'♘',Pw:'♙',Kb:'♚',Qb:'♛',Rb:'♜',Bb:'♝',Nb:'♞',Pb:'♟'};
+                const glyphs = { Kw:'♔',Qw:'♕',Rw:'♖',Bw:'♗',Nw:'♘',Pw:'♙',Kb:'♚',Qb:'♛',Rb:'♜',Bb:'♝',Nb:'♞',Pb:'♟' };
                 context.save();
                 context.font = `${size}px serif`;
                 context.textAlign = 'center';
                 context.textBaseline = 'middle';
                 context.fillStyle = key.endsWith('w') ? '#f5ead8' : '#1a0f06';
-                context.fillText(glyphs[key]||'?', cx, cy);
+                context.fillText(glyphs[key] || '?', cx, cy);
                 context.restore();
             }
         }
 
         function drawArrow() {
-            const ac = arrowCtx;
-            ac.clearRect(0, 0, 120, 100);
-            const cx = 60, cy = 52;
-            const sz = 30;
+            arrowCtx.clearRect(0, 0, 120, 100);
+            const cx = 60, cy = 52, sz = 30;
             let angle = board.rotation * 90;
             if (rotAnim) angle += rotAnim.progress * 90;
             const rad = angle * Math.PI / 180;
-
-            function rotPt(x, y) {
+            const rotPt = (x, y) => {
                 const dx = x - cx, dy = y - cy;
-                return [cx + dx * Math.cos(rad) - dy * Math.sin(rad),
-                cy + dx * Math.sin(rad) + dy * Math.cos(rad)];
-            }
-            const pts = [
-                [cx, cy - sz], [cx - 16, cy + 8], [cx - 6, cy + 8], [cx - 6, cy + sz], [cx + 6, cy + sz], [cx + 6, cy + 8], [cx + 16, cy + 8]
-            ].map(([x, y]) => rotPt(x, y));
-
-            ac.beginPath();
-            ac.moveTo(...pts[0]);
-            for (let i = 1; i < pts.length; i++) ac.lineTo(...pts[i]);
-            ac.closePath();
-            ac.fillStyle = '#c9a84c';
-            ac.fill();
-            ac.strokeStyle = '#f5d070';
-            ac.lineWidth = 1.5;
-            ac.stroke();
+                return [cx + dx * Math.cos(rad) - dy * Math.sin(rad), cy + dx * Math.sin(rad) + dy * Math.cos(rad)];
+            };
+            const pts = [[cx,cy-sz],[cx-16,cy+8],[cx-6,cy+8],[cx-6,cy+sz],[cx+6,cy+sz],[cx+6,cy+8],[cx+16,cy+8]].map(([x,y])=>rotPt(x,y));
+            arrowCtx.beginPath();
+            arrowCtx.moveTo(...pts[0]);
+            for (let i = 1; i < pts.length; i++) arrowCtx.lineTo(...pts[i]);
+            arrowCtx.closePath();
+            arrowCtx.fillStyle = '#c9a84c';
+            arrowCtx.fill();
+            arrowCtx.strokeStyle = '#f5d070';
+            arrowCtx.lineWidth = 1.5;
+            arrowCtx.stroke();
         }
 
         // ── NETWORKING ────────────────────────────────────────────────────────────────
         function applyMove(moveDict) {
             if (moveDict.promotion === 'RESET') {
-                board = new Board();
-                movesThisRound = 0; selected = null; legalMoves = []; lastMove = null;
-                gameOver = null; moveAnim = null; rotAnim = null;
+                board = new Board(); movesThisRound = 0; selected = null; legalMoves = [];
+                lastMove = null; gameOver = null; moveAnim = null; rotAnim = null;
                 myColor = myColor === 'w' ? 'b' : 'w';
                 myTurn = myColor === 'w';
-                updateUI();
-                return;
+                updateUI(); return;
             }
-            const [fr, fc] = moveDict.from;
-            const [tr, tc] = moveDict.to;
+            const [fr, fc] = moveDict.from, [tr, tc] = moveDict.to;
             if (!onBoard(fr, fc) || !onBoard(tr, tc)) return;
-            const promo = moveDict.promotion || null;
-            board.move(fr, fc, tr, tc, promo);
+            board.move(fr, fc, tr, tc, moveDict.promotion || null);
             lastMove = [fr, fc, tr, tc];
             movesThisRound++;
             if (movesThisRound >= 2) { movesThisRound = 0; startRotAnim(); }
@@ -842,19 +816,16 @@
             setStatus('Connecting...');
             try {
                 ws = new WebSocket(SERVER_URL);
-                ws.onopen = () => {
-                    ws.send(code);
-                };
+                ws.onopen = () => ws.send(code);
                 ws.onmessage = (e) => {
                     const data = e.data.trim();
-                    // First message after connect is player id
                     if (!connected) {
                         playerId = parseInt(data);
                         myColor = playerId === 0 ? 'w' : 'b';
                         myTurn = playerId === 0;
                         connected = true;
-                        document.getElementById('btn-create').classList.add(playerId === 0 ? 'green' : '');
-                        document.getElementById('btn-join').classList.add(playerId === 1 ? 'green' : '');
+                        if (playerId === 0) document.getElementById('btn-create').classList.add('green');
+                        if (playerId === 1) document.getElementById('btn-join').classList.add('green');
                         setStatus(`Connected as ${myColor === 'w' ? 'WHITE' : 'BLACK'}`);
                         updateUI();
                     } else {
@@ -862,24 +833,19 @@
                     }
                 };
                 ws.onclose = () => { connected = false; setStatus('Disconnected'); updateUI(); };
-                ws.onerror = () => { setStatus('Connection failed'); };
+                ws.onerror = () => setStatus('Connection failed');
             } catch (err) { setStatus('Connection error: ' + err.message); }
         }
 
-        // ── ROTATION ANIMATION ────────────────────────────────────────────────────────
-        function startRotAnim() {
-            rotAnim = { startMs: performance.now(), progress: 0 };
-        }
+        // ── ROTATION ANIM ─────────────────────────────────────────────────────────────
+        function startRotAnim() { rotAnim = { startMs: performance.now(), progress: 0 }; }
 
         function tickRotAnim() {
             if (!rotAnim) return;
             const elapsed = performance.now() - rotAnim.startMs;
             if (elapsed >= ROT_ANIM_MS) {
                 board.rotateBoard();
-                if (lastMove) {
-                    const [fr, fc, tr, tc] = lastMove;
-                    lastMove = [fc, 7 - fr, tc, 7 - tr];
-                }
+                if (lastMove) { const [fr,fc,tr,tc] = lastMove; lastMove = [fc,7-fr,tc,7-tr]; }
                 rotAnim = null;
             } else {
                 rotAnim.progress = elapsed / ROT_ANIM_MS;
@@ -890,9 +856,8 @@
         canvas.addEventListener('click', (e) => {
             if (!connected || !myTurn || gameOver) return;
             const rect = canvas.getBoundingClientRect();
-            const scaleX = 800 / rect.width, scaleY = 800 / rect.height;
-            const mx = (e.clientX - rect.left) * scaleX;
-            const my = (e.clientY - rect.top) * scaleY;
+            const mx = (e.clientX - rect.left) * (800 / rect.width);
+            const my = (e.clientY - rect.top) * (800 / rect.height);
             const vc = Math.floor((mx - MARGIN) / CELL);
             const vr = Math.floor((my - MARGIN) / CELL);
             if (vc < 0 || vc > 7 || vr < 0 || vr > 7) { selected = null; legalMoves = []; return; }
@@ -911,12 +876,7 @@
                     const promo = (pieceAt.type === 'P' && board._isPromoSquare(br, bc, pieceAt.color)) ? 'Q' : null;
                     const [vr1, vc1] = boardToVisual(sr, sc);
                     const [vr2, vc2] = boardToVisual(br, bc);
-                    moveAnim = {
-                        pieceKey: pieceAt.type + pieceAt.color,
-                        fromVr: vr1, fromVc: vc1, toVr: vr2, toVc: vc2,
-                        pieceBr: sr, pieceBc: sc, toBr: br, toBc: bc,
-                        startMs: performance.now(),
-                    };
+                    moveAnim = { pieceKey: pieceAt.type + pieceAt.color, fromVr: vr1, fromVc: vc1, toVr: vr2, toVc: vc2, pieceBr: sr, pieceBc: sc, toBr: br, toBc: bc, startMs: performance.now() };
                     applyMove({ from: [sr, sc], to: [br, bc], promotion: promo });
                     sendMove([sr, sc], [br, bc], promo);
                     selected = null; legalMoves = [];
@@ -927,19 +887,17 @@
         // ── UI ────────────────────────────────────────────────────────────────────────
         document.getElementById('your-code').textContent = roomCode;
 
-        const codeInput = document.getElementById('code-input');
-        const btnCreate = document.getElementById('btn-create');
-        const btnJoin = document.getElementById('btn-join');
-        const btnAgain = document.getElementById('btn-again');
-
-        codeInput.addEventListener('input', () => {
-            codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z]/g, '');
-            btnJoin.disabled = codeInput.value.length !== 4 || connected;
+        document.getElementById('code-input').addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
+            document.getElementById('btn-join').disabled = e.target.value.length !== 4 || connected;
         });
 
-        btnCreate.addEventListener('click', () => { if (!connected) connect(roomCode); });
-        btnJoin.addEventListener('click', () => { if (!connected && codeInput.value.length === 4) connect(codeInput.value); });
-        btnAgain.addEventListener('click', () => {
+        document.getElementById('btn-create').addEventListener('click', () => { if (!connected) connect(roomCode); });
+        document.getElementById('btn-join').addEventListener('click', () => {
+            const v = document.getElementById('code-input').value;
+            if (!connected && v.length === 4) connect(v);
+        });
+        document.getElementById('btn-again').addEventListener('click', () => {
             board = new Board(); movesThisRound = 0; selected = null; legalMoves = [];
             lastMove = null; moveAnim = null; rotAnim = null;
             myColor = myColor === 'w' ? 'b' : 'w';
@@ -953,55 +911,40 @@
 
         function updateUI() {
             const turnEl = document.getElementById('turn-indicator');
-            const asEl = document.getElementById('playing-as');
-            const goSec = document.getElementById('game-over-section');
-            const goMsg = document.getElementById('game-over-msg');
-            const gsSec = document.getElementById('game-status');
+            const asEl   = document.getElementById('playing-as');
+            const goSec  = document.getElementById('game-over-section');
+            const goMsg  = document.getElementById('game-over-msg');
+            const gsSec  = document.getElementById('game-status');
 
             if (gameOver) {
-                gsSec.style.display = 'none';
-                goSec.style.display = 'block';
+                gsSec.style.display = 'none'; goSec.style.display = 'block';
                 goMsg.textContent = gameOver === 'won' ? '✦ You Won! ✦' : '✦ You Lost ✦';
                 goMsg.style.color = gameOver === 'won' ? '#6abf7a' : '#bf6a6a';
             } else {
-                goSec.style.display = 'none';
-                gsSec.style.display = 'block';
+                goSec.style.display = 'none'; gsSec.style.display = 'block';
                 if (!connected) {
-                    turnEl.textContent = 'Not Connected';
-                    turnEl.style.color = '#5a5040';
-                    asEl.textContent = '';
+                    turnEl.textContent = 'Not Connected'; turnEl.style.color = '#5a5040'; asEl.textContent = '';
                 } else {
-                    const isMyTurn = myTurn;
-                    turnEl.textContent = isMyTurn ? '▶ YOUR TURN' : '◌ Waiting...';
-                    turnEl.style.color = isMyTurn ? '#6abf7a' : '#bf6a6a';
+                    turnEl.textContent = myTurn ? '▶ YOUR TURN' : '◌ Waiting...';
+                    turnEl.style.color = myTurn ? '#6abf7a' : '#bf6a6a';
                     asEl.textContent = `Playing as ${myColor === 'w' ? 'WHITE' : 'BLACK'}`;
                 }
             }
         }
 
-        // ── GAME LOOP ─────────────────────────────────────────────────────────────────
+        // ── LOOP ──────────────────────────────────────────────────────────────────────
         function loop() {
             tickRotAnim();
-
             ctx.fillStyle = '#0d0d0d';
             ctx.fillRect(0, 0, 800, 800);
-
-            const rotAngle = rotAnim ? rotAnim.progress * 90 : 0;
-            drawBoard(rotAngle);
+            drawBoard(rotAnim ? rotAnim.progress * 90 : 0);
             drawArrow();
-
             requestAnimationFrame(loop);
         }
 
         updateUI();
         requestAnimationFrame(loop);
-
-        // Cleanup on close
         window.addEventListener('beforeunload', () => { if (ws) ws.close(); });
     </script>
 </body>
-
 </html>
-
-
-
