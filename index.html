@@ -642,14 +642,45 @@
                 }
 
                 // Draw piece (skip animated piece)
-                const piece = board.get(br, bc);
-                const skipPiece = moveAnim && (
-                    (moveAnim.pieceBr === br && moveAnim.pieceBc === bc) ||
-                    (moveAnim.toBr === br && moveAnim.toBc === bc)
-                );
-                if (piece && !skipPiece) {
-                    drawPiece(ctx, piece.type + piece.color, x + CELL / 2, y + CELL / 2, CELL * 0.72);
+            const piece = board.get(br, bc);
+            const skipPiece = moveAnim && (
+              (moveAnim.pieceBr===br && moveAnim.pieceBc===bc) ||
+              (moveAnim.toBr===br && moveAnim.toBc===bc)
+            );
+            if (piece && !skipPiece) {
+              if (rotAnim) {
+                // cos goes 1 → 0 → -1 over the animation
+                const flip = Math.cos(rotAnim.progress * Math.PI);
+                const scaleX = Math.abs(flip);
+                
+                if (flip >= 0) {
+                  // First half: draw at current position, squishing to 0
+                  const [cx2, cy2] = cellCenter(vr, vc);
+                  ctx.save();
+                  ctx.translate(cx2, cy2);
+                  ctx.scale(scaleX, 1);
+                  ctx.translate(-cx2, -cy2);
+                  drawPiece(ctx, piece.type + piece.color, cx2, cy2, CELL * 0.72);
+                  ctx.restore();
+                } else {
+                  // Second half: compute post-rotation visual position, expand from 0
+                  // After 90° CW rotation, board cell (br,bc) moves to (bc, 7-br)
+                  const [nbr, nbc] = [bc, 7 - br];
+                  const [nvr, nvc] = myColor === 'w' ? [nbr, nbc] : [7-nbr, 7-nbc];
+                  const [cx2, cy2] = cellCenter(nvr, nvc);
+                  ctx.save();
+                  ctx.translate(cx2, cy2);
+                  ctx.scale(scaleX, 1);
+                  ctx.translate(-cx2, -cy2);
+                  drawPiece(ctx, piece.type + piece.color, cx2, cy2, CELL * 0.72);
+                  ctx.restore();
                 }
+              } else {
+                // Normal draw, no rotation happening
+                const [cx2, cy2] = cellCenter(vr, vc);
+                drawPiece(ctx, piece.type + piece.color, cx2, cy2, CELL * 0.72);
+              }
+            }
             }
 
             // Rank/file labels
@@ -933,3 +964,4 @@
 </body>
 
 </html>
+
