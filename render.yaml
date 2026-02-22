@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: twistedchess
+    runtime: python
+    plan: free
+    autoDeploy: true
+    buildCommand: pip install fastapi uvicorn websocket-client
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PORT
+        value: 10000
