@@ -648,38 +648,18 @@
               (moveAnim.toBr===br && moveAnim.toBc===bc)
             );
             if (piece && !skipPiece) {
-              if (rotAnim) {
-                // cos goes 1 → 0 → -1 over the animation
-                const flip = Math.cos(rotAnim.progress * Math.PI);
-                const scaleX = Math.abs(flip);
-                
-                if (flip >= 0) {
-                  // First half: draw at current position, squishing to 0
-                  const [cx2, cy2] = cellCenter(vr, vc);
-                  ctx.save();
-                  ctx.translate(cx2, cy2);
-                  ctx.scale(scaleX, 1);
-                  ctx.translate(-cx2, -cy2);
-                  drawPiece(ctx, piece.type + piece.color, cx2, cy2, CELL * 0.72);
-                  ctx.restore();
-                } else {
-                  // Second half: compute post-rotation visual position, expand from 0
-                  // After 90° CW rotation, board cell (br,bc) moves to (bc, 7-br)
-                  const [nbr, nbc] = [bc, 7 - br];
-                  const [nvr, nvc] = myColor === 'w' ? [nbr, nbc] : [7-nbr, 7-nbc];
-                  const [cx2, cy2] = cellCenter(nvr, nvc);
-                  ctx.save();
-                  ctx.translate(cx2, cy2);
-                  ctx.scale(scaleX, 1);
-                  ctx.translate(-cx2, -cy2);
-                  drawPiece(ctx, piece.type + piece.color, cx2, cy2, CELL * 0.72);
-                  ctx.restore();
-                }
-              } else {
-                // Normal draw, no rotation happening
                 const [cx2, cy2] = cellCenter(vr, vc);
-                drawPiece(ctx, piece.type + piece.color, cx2, cy2, CELL * 0.72);
-              }
+                if (rotAnim) {
+                    // counter-rotate the sprite to keep it upright while board spins
+                    const boardAngleRad = rotAnim.progress * 90 * Math.PI / 180;
+                    ctx.save();
+                    ctx.translate(cx2, cy2);
+                    ctx.rotate(-boardAngleRad); // cancel out the board rotation
+                    drawPiece(ctx, piece.type + piece.color, 0, 0, CELL * 0.72);
+                    ctx.restore();
+                } else {
+                    drawPiece(ctx, piece.type + piece.color, cx2, cy2, CELL * 0.72);
+                }
             }
             }
 
@@ -723,17 +703,16 @@
                 context.shadowOffsetX = 1;
                 context.shadowOffsetY = 2;
                 const w = key.startsWith('P') ? size * 0.80 : size;
-                context.drawImage(img, cx - w / 2, cy - size / 2, w, size);
+                context.drawImage(img, cx - w/2, cy - size/2, w, size);
                 context.restore();
             } else {
-                // Fallback to glyph if sprite not loaded
-                const glyphs = { Kw: '♔', Qw: '♕', Rw: '♖', Bw: '♗', Nw: '♘', Pw: '♙', Kb: '♚', Qb: '♛', Rb: '♜', Bb: '♝', Nb: '♞', Pb: '♟' };
+                const glyphs = {Kw:'♔',Qw:'♕',Rw:'♖',Bw:'♗',Nw:'♘',Pw:'♙',Kb:'♚',Qb:'♛',Rb:'♜',Bb:'♝',Nb:'♞',Pb:'♟'};
                 context.save();
                 context.font = `${size}px serif`;
                 context.textAlign = 'center';
                 context.textBaseline = 'middle';
                 context.fillStyle = key.endsWith('w') ? '#f5ead8' : '#1a0f06';
-                context.fillText(glyphs[key] || '?', cx, cy);
+                context.fillText(glyphs[key]||'?', cx, cy);
                 context.restore();
             }
         }
@@ -964,4 +943,5 @@
 </body>
 
 </html>
+
 
